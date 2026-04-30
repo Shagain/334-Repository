@@ -6,7 +6,7 @@ public class Vehicle : BaseEntity
 {
     public int VehicleID { get; set; }
     public string LicensePlate { get; set; } = string.Empty;
-    
+
     public int UserID { get; set; }
     public User User { get; set; } = null!;
 

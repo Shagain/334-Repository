@@ -12,7 +12,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Name).HasMaxLength(100).IsRequired();
         builder.Property(u => u.Email).HasMaxLength(100).IsRequired();
         builder.HasIndex(u => u.Email).IsUnique();
-        
+
         builder.Property(u => u.Role).HasConversion<string>();
     }
 }
