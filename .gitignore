@@ -43,3 +43,16 @@ app.*.map.json
 /frontend/android/app/debug
 /frontend/android/app/profile
 /frontend/android/app/release
+
+# .NET / ASP.NET Core
+[Bb]in/
+[Oo]bj/
+out/
+appsettings.json
+!appsettings.json
+appsettings.Development.json
+!appsettings.Development.json
+.vscode/
+*.user
+*.userosscache
+*.sln.docuser
