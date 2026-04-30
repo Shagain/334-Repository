@@ -14,7 +14,17 @@ tags:
   - name: Authentication
     description: Identity management and OAuth authorisation
   - name: Users
-    description: User profiles, vehicles, notifications, bookings, and sessions
+    description: User profile and identity management
+  - name: Vehicles
+    description: Register and manage user vehicles
+  - name: Bookings
+    description: Parking reservations and scheduling
+  - name: Sessions
+    description: Active parking session tracking
+  - name: Notifications
+    description: Real-time alerts and communication
+  - name: Violations
+    description: Infractions and enforcement history
   - name: Zones
     description: Parking zones, physical spots, occupancy, and predictions
   - name: Navigation
@@ -22,9 +32,10 @@ tags:
   - name: Payments
     description: Financial transactions linked to bookings
   - name: Admin
-    description: System configuration, user management, violations, and analytical reports
+    description: System configuration, user management, and analytical reports
 
 paths:
+  # --- Authentication ---
   /auth/token:
     post:
       tags:
@@ -49,7 +60,7 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
-  # --- User Resources ---
+  # --- Users ---
   /users/me:
     get:
       tags:
@@ -85,16 +96,13 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
 
-  /users/me/vehicles:
+  # --- Vehicles ---
+  /vehicles:
     get:
       tags:
-        - Users
-      summary: List my registered vehicles
+        - Vehicles
+      summary: List vehicles (Users see their own, Admins see all)
       responses:
         "200":
           description: List of vehicles
@@ -106,12 +114,10 @@ paths:
                   $ref: "#/components/schemas/Vehicle"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
     post:
       tags:
-        - Users
-      summary: Register a new vehicle to my profile
+        - Vehicles
+      summary: Register a new vehicle
       requestBody:
         required: true
         content:
@@ -121,24 +127,18 @@ paths:
       responses:
         "201":
           description: Vehicle registered
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Vehicle"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
 
-  /users/me/vehicles/{vehicleId}:
+  /vehicles/{vehicleId}:
     parameters:
       - $ref: "#/components/parameters/VehicleIdParam"
     delete:
       tags:
-        - Users
-      summary: Remove a registered vehicle
+        - Vehicles
+      summary: Remove a vehicle
       responses:
         "204":
           description: Vehicle successfully deleted
@@ -149,33 +149,12 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /users/me/notifications:
+  # --- Bookings ---
+  /bookings:
     get:
       tags:
-        - Users
-      summary: Stream or fetch my notifications (SSE support)
-      responses:
-        "200":
-          description: A stream of notifications or a list of recent alerts
-          content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/Notification"
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Notification"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /users/me/bookings:
-    get:
-      tags:
-        - Users
-      summary: List my booking history
+        - Bookings
+      summary: List bookings (Users see their own, Admins see all)
       parameters:
         - name: status
           in: query
@@ -193,12 +172,10 @@ paths:
                   $ref: "#/components/schemas/Booking"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
     post:
       tags:
-        - Users
-      summary: Create an atomic booking reservation
+        - Bookings
+      summary: Create a booking
       requestBody:
         required: true
         content:
@@ -208,10 +185,6 @@ paths:
       responses:
         "201":
           description: Booking confirmed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Booking"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -223,16 +196,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /users/me/bookings/{bookingID}:
+  /bookings/{bookingID}:
     parameters:
       - name: bookingID
         in: path
         required: true
         schema:
           type: integer
+    get:
+      tags:
+        - Bookings
+      summary: Get booking details
+      responses:
+        "200":
+          description: Booking details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
     patch:
       tags:
-        - Users
+        - Bookings
       summary: Modify booking
       requestBody:
         required: true
@@ -242,11 +230,7 @@ paths:
               $ref: "#/components/schemas/BookingRequest"
       responses:
         "200":
-          description: Booking successfully modified
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Booking"
+          description: Booking modified
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -261,52 +245,86 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
     delete:
       tags:
-        - Users
+        - Bookings
       summary: Cancel booking
       responses:
         "204":
-          description: Successfully cancelled
+          description: Cancelled
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /users/me/sessions/active:
+  # --- Sessions ---
+  /parking-sessions:
     get:
       tags:
-        - Users
-      summary: Get my active parking session
+        - Sessions
+      summary: List parking sessions (Users see their own, Admins see all)
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter for active sessions only
       responses:
         "200":
-          description: Active session object
+          description: List of sessions
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ParkingSession"
-        "400":
-          $ref: "#/components/responses/BadRequest"
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSession"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "404":
-          description: No active session found
+
+  # --- Notifications ---
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Stream or fetch notifications (Users see their own, Admins see all)
+      responses:
+        "200":
+          description: List of alerts or SSE stream
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
-  # --- Infrastructure Resources ---
+  # --- Violations ---
+  /violations:
+    get:
+      tags:
+        - Violations
+      summary: List violations (Users see their own, Admins see all)
+      responses:
+        "200":
+          description: List of violations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Violation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Zones & Infrastructure ---
   /zones:
     get:
       tags:
         - Zones
-      summary: List all parking zones with real-time occupancy
+      summary: List all parking zones
       responses:
         "200":
-          description: List of zones including pure GeoJSON Polygon data
+          description: List of zones
           content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/ZoneWithMapData"
             application/json:
               schema:
                 type: array
@@ -342,8 +360,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ZoneWithMapData"
-        "400":
-          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -362,9 +378,6 @@ paths:
         "200":
           description: List of parking spots
           content:
-            text/event-stream:
-              schema:
-                $ref: "#/components/schemas/ParkingSpot"
             application/json:
               schema:
                 type: array
@@ -434,6 +447,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # --- Navigation ---
   /navigation/route:
     get:
       tags:
@@ -471,6 +485,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  # --- Payments ---
   /payments:
     post:
       tags:
@@ -500,7 +515,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  # --- Administrative Resources ---
+  # --- Administration ---
   /admin/users:
     get:
       tags:
@@ -551,6 +566,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /admin/zones:
     post:
@@ -566,6 +583,8 @@ paths:
       responses:
         "201":
           description: Zone created
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -591,6 +610,8 @@ paths:
       responses:
         "200":
           description: Zone updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -608,6 +629,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /admin/violations:
     get:
@@ -662,6 +685,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ParkingSpot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -673,7 +698,7 @@ paths:
     get:
       tags:
         - Admin
-      summary: Generate analytical reports (occupancy, revenue, peak hours)
+      summary: Generate analytical reports
       parameters:
         - name: reportType
           in: query
@@ -1001,8 +1026,9 @@ components:
         sentAt:
           type: string
           format: date-time
-        isRead:
-          type: boolean
+        channel:
+          type: string
+          description: e.g. "email", "push", "sms"
 
     # --- Analytics & Spatial ---
     PredictionResponse:
