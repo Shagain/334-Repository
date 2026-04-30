@@ -770,9 +770,6 @@ components:
         role:
           type: string
           enum: [student, staff, visitor, admin]
-        profilePhoto:
-          type: string
-          format: uri
 
     UserProfileUpdate:
       type: object
@@ -780,9 +777,6 @@ components:
         name:
           type: string
           description: The full name of the user.
-        profilePhoto:
-          type: string
-          format: uri
 
     Vehicle:
       type: object
