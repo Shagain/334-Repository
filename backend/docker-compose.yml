@@ -22,6 +22,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Database=smart_parking;Username=postgres;Password=password
+      - BYPASS_AUTH=true
     ports:
       - "5000:8080"
     depends_on:
