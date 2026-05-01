@@ -15,22 +15,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Identity Infrastructure
-builder.Services.AddScoped<ICurrentUserService, MockCurrentUserService>();
 
 // --- Master Switch Security ---
 var bypassAuth = builder.Configuration["BYPASS_AUTH"] == "true";
 
 if (bypassAuth)
 {
-    builder
-        .Services.AddAuthentication("Mock")
+    // Mock Identity & Auth
+    builder.Services.AddScoped<ICurrentUserService, MockCurrentUserService>();
+    builder.Services.AddAuthentication("Mock")
         .AddScheme<AuthenticationSchemeOptions, MockAuthHandler>("Mock", null);
 }
 else
 {
     // The "Real" JWT config will go here later
-    // builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(...);
+    // builder.Services.AddScoped<ICurrentUserService, RealCurrentUserService>();
 }
 
 var app = builder.Build();
