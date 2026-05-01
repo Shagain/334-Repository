@@ -1,9 +1,8 @@
-using SmartParking.Domain.Common;
 using SmartParking.Domain.Enums;
 
 namespace SmartParking.Domain.Entities;
 
-public class User : BaseEntity
+public class User
 {
     public int UserID { get; set; }
     public string Name { get; set; } = string.Empty;

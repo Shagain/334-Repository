@@ -1,8 +1,7 @@
-using SmartParking.Domain.Common;
 
 namespace SmartParking.Domain.Entities;
 
-public class Vehicle : BaseEntity
+public class Vehicle
 {
     public int VehicleID { get; set; }
     public string LicensePlate { get; set; } = string.Empty;

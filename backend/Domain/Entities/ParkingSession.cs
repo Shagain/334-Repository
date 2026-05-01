@@ -1,9 +1,8 @@
-using SmartParking.Domain.Common;
 using SmartParking.Domain.Enums;
 
 namespace SmartParking.Domain.Entities;
 
-public class ParkingSession : BaseEntity
+public class ParkingSession
 {
     public int SessionID { get; set; }
     public DateTime StartTime { get; set; }

@@ -1,8 +1,7 @@
-using SmartParking.Domain.Common;
 
 namespace SmartParking.Domain.Entities;
 
-public class Notification : BaseEntity
+public class Notification
 {
     public int NotificationID { get; set; }
     public string Type { get; set; } = string.Empty;

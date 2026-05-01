@@ -1,9 +1,8 @@
-using SmartParking.Domain.Common;
 using SmartParking.Domain.Enums;
 
 namespace SmartParking.Domain.Entities;
 
-public class Violation : BaseEntity
+public class Violation
 {
     public int ViolationID { get; set; }
     public ViolationType Type { get; set; }

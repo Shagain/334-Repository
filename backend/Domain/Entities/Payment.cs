@@ -1,9 +1,8 @@
-using SmartParking.Domain.Common;
 using SmartParking.Domain.Enums;
 
 namespace SmartParking.Domain.Entities;
 
-public class Payment : BaseEntity
+public class Payment
 {
     public int PaymentID { get; set; }
     public double Amount { get; set; }
