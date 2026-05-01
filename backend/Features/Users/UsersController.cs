@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Features.Users.DTOs;
 
 namespace SmartParking.Features.Users;
 
@@ -12,5 +11,5 @@ public class UsersController : ControllerBase
     public IActionResult GetMe() => Ok();
 
     [HttpPatch("users/me")]
-    public IActionResult UpdateMe([FromBody] UserProfileUpdate request) => Ok();
+    public IActionResult UpdateMe() => Ok();
 }

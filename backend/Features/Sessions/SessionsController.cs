@@ -8,5 +8,5 @@ namespace SmartParking.Features.Sessions;
 public class SessionsController : ControllerBase
 {
     [HttpGet("parking-sessions")]
-    public IActionResult GetSessions([FromQuery] bool? active) => Ok();
+    public IActionResult GetSessions() => Ok();
 }

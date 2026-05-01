@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Features.Zones.DTOs;
 
 namespace SmartParking.Features.Zones;
 
@@ -12,14 +11,14 @@ public class ZonesController : ControllerBase
     public IActionResult GetZones() => Ok();
 
     [HttpGet("zones/recommendations")]
-    public IActionResult GetRecommendations([FromQuery] double originLat, [FromQuery] double originLng) => Ok();
+    public IActionResult GetRecommendations() => Ok();
 
     [HttpGet("zones/{zoneId}/spots")]
-    public IActionResult GetSpots([FromRoute] int zoneId) => Ok();
+    public IActionResult GetSpots() => Ok();
 
     [HttpGet("zones/{zoneId}/stats")]
-    public IActionResult GetStats([FromRoute] int zoneId) => Ok();
+    public IActionResult GetStats() => Ok();
 
     [HttpGet("zones/{zoneId}/predictions")]
-    public IActionResult GetPredictions([FromRoute] int zoneId, [FromQuery] DateTime startDateTime, [FromQuery] DateTime endDateTime) => Ok();
+    public IActionResult GetPredictions() => Ok();
 }

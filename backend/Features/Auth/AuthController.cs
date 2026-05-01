@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Features.Auth.DTOs;
 
 namespace SmartParking.Features.Auth;
 
@@ -7,5 +6,5 @@ namespace SmartParking.Features.Auth;
 public class AuthController : ControllerBase
 {
     [HttpPost("auth/token")]
-    public IActionResult GetToken([FromBody] TokenExchangeRequest request) => Ok();
+    public IActionResult GetToken() => Ok();
 }

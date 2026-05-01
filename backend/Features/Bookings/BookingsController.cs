@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Domain.Enums;
-using SmartParking.Features.Bookings.DTOs;
 
 namespace SmartParking.Features.Bookings;
 
@@ -10,20 +8,17 @@ namespace SmartParking.Features.Bookings;
 public class BookingsController : ControllerBase
 {
     [HttpGet("bookings")]
-    public IActionResult GetBookings([FromQuery] BookingStatus? status) => Ok();
+    public IActionResult GetBookings() => Ok();
 
     [HttpPost("bookings")]
-    public IActionResult CreateBooking([FromBody] BookingRequest request) => Ok();
+    public IActionResult CreateBooking() => Ok();
 
     [HttpGet("bookings/{bookingId}")]
-    public IActionResult GetBooking([FromRoute] int bookingId) => Ok();
+    public IActionResult GetBooking() => Ok();
 
     [HttpPatch("bookings/{bookingId}")]
-    public IActionResult UpdateBooking(
-        [FromRoute] int bookingId,
-        [FromBody] BookingRequest request
-    ) => Ok();
+    public IActionResult UpdateBooking() => Ok();
 
     [HttpDelete("bookings/{bookingId}")]
-    public IActionResult CancelBooking([FromRoute] int bookingId) => Ok();
+    public IActionResult CancelBooking() => Ok();
 }

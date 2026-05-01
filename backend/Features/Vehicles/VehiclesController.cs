@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Features.Vehicles.DTOs;
 
 namespace SmartParking.Features.Vehicles;
 
@@ -12,8 +11,8 @@ public class VehiclesController : ControllerBase
     public IActionResult GetVehicles() => Ok();
 
     [HttpPost("vehicles")]
-    public IActionResult RegisterVehicle([FromBody] VehicleRegistrationRequest request) => Ok();
+    public IActionResult RegisterVehicle() => Ok();
 
     [HttpDelete("vehicles/{vehicleId}")]
-    public IActionResult DeleteVehicle([FromRoute] int vehicleId) => Ok();
+    public IActionResult DeleteVehicle() => Ok();
 }

@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartParking.Domain.Enums;
-using SmartParking.Features.Admin.DTOs;
 
 namespace SmartParking.Features.Admin;
 
@@ -10,29 +8,26 @@ namespace SmartParking.Features.Admin;
 public class AdminController : ControllerBase
 {
     [HttpGet("admin/users")]
-    public IActionResult ListUsers([FromQuery] string? query) => Ok();
+    public IActionResult ListUsers() => Ok();
 
     [HttpPatch("admin/users/{userId}/role")]
-    public IActionResult UpdateUserRole([FromRoute] int userId, [FromBody] UserRoleUpdate request) => Ok();
+    public IActionResult UpdateUserRole() => Ok();
 
     [HttpPost("admin/zones")]
-    public IActionResult CreateZone([FromBody] ZoneUpdate request) => Ok();
+    public IActionResult CreateZone() => Ok();
 
     [HttpPatch("admin/zones/{zoneId}")]
-    public IActionResult UpdateZone([FromRoute] int zoneId, [FromBody] ZoneUpdate request) => Ok();
+    public IActionResult UpdateZone() => Ok();
 
     [HttpDelete("admin/zones/{zoneId}")]
-    public IActionResult DeleteZone([FromRoute] int zoneId) => Ok();
+    public IActionResult DeleteZone() => Ok();
 
     [HttpGet("admin/violations")]
     public IActionResult GetViolations() => Ok();
 
     [HttpPatch("admin/zones/{zoneId}/spots/{spotId}/status")]
-    public IActionResult OverrideSpotStatus([FromRoute] int zoneId, [FromRoute] int spotId, [FromBody] SpotStatusOverride request) => Ok();
+    public IActionResult OverrideSpotStatus() => Ok();
 
     [HttpGet("admin/reports")]
-    public IActionResult GetReports(
-        [FromQuery] ReportType reportType,
-        [FromQuery] DateTime? startDate,
-        [FromQuery] DateTime? endDate) => Ok();
+    public IActionResult GetReports() => Ok();
 }
