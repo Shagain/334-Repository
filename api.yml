@@ -1,0 +1,1092 @@
+openapi: 3.0.3
+info:
+  title: Campus Smart Parking System API
+  description: Enterprise-grade backend API mapping directly to the SPMS relational database schema, with fully explicit schema definitions and basic error handling.
+  version: 3.4.1
+servers:
+  - url: https://api.campuspark.edu.au/v1
+    description: Production Environment
+
+security:
+  - OAuth2: [read, write, admin]
+
+tags:
+  - name: Authentication
+    description: Identity management and OAuth authorisation
+  - name: Users
+    description: User profile and identity management
+  - name: Vehicles
+    description: Register and manage user vehicles
+  - name: Bookings
+    description: Parking reservations and scheduling
+  - name: Sessions
+    description: Active parking session tracking
+  - name: Notifications
+    description: Real-time alerts and communication
+  - name: Violations
+    description: Infractions and enforcement history
+  - name: Zones
+    description: Parking zones, physical spots, occupancy, and predictions
+  - name: Navigation
+    description: Map routing and spatial features
+  - name: Payments
+    description: Financial transactions linked to bookings
+  - name: Admin
+    description: System configuration, user management, and analytical reports
+
+paths:
+  # --- Authentication ---
+  /auth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Exchange authorisation code for access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenExchangeRequest"
+      responses:
+        "200":
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Users ---
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Retrieve the profile of the currently authenticated user
+      responses:
+        "200":
+          description: Current user profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags:
+        - Users
+      summary: Update your own profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserProfileUpdate"
+      responses:
+        "200":
+          description: Profile successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Vehicles ---
+  /vehicles:
+    get:
+      tags:
+        - Vehicles
+      summary: List vehicles (Users see their own, Admins see all)
+      responses:
+        "200":
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vehicle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Vehicles
+      summary: Register a new vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleRegistrationRequest"
+      responses:
+        "201":
+          description: Vehicle registered
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /vehicles/{vehicleId}:
+    parameters:
+      - $ref: "#/components/parameters/VehicleIdParam"
+    delete:
+      tags:
+        - Vehicles
+      summary: Remove a vehicle
+      responses:
+        "204":
+          description: Vehicle successfully deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Bookings ---
+  /bookings:
+    get:
+      tags:
+        - Bookings
+      summary: List bookings (Users see their own, Admins see all)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [upcoming, past, cancelled]
+      responses:
+        "200":
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Bookings
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+      responses:
+        "201":
+          description: Booking confirmed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Conflict (double-booking or capacity limit reached)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bookings/{bookingID}:
+    parameters:
+      - name: bookingID
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Bookings
+      summary: Get booking details
+      responses:
+        "200":
+          description: Booking details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Bookings
+      summary: Modify booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingRequest"
+      responses:
+        "200":
+          description: Booking modified
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict (requested time slot is unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags:
+        - Bookings
+      summary: Cancel booking
+      responses:
+        "204":
+          description: Cancelled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Sessions ---
+  /parking-sessions:
+    get:
+      tags:
+        - Sessions
+      summary: List parking sessions (Users see their own, Admins see all)
+      parameters:
+        - name: active
+          in: query
+          schema:
+            type: boolean
+          description: Filter for active sessions only
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSession"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Notifications ---
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Stream or fetch notifications (Users see their own, Admins see all)
+      responses:
+        "200":
+          description: List of alerts or SSE stream
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Violations ---
+  /violations:
+    get:
+      tags:
+        - Violations
+      summary: List violations (Users see their own, Admins see all)
+      responses:
+        "200":
+          description: List of violations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Violation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # --- Zones & Infrastructure ---
+  /zones:
+    get:
+      tags:
+        - Zones
+      summary: List all parking zones
+      responses:
+        "200":
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ZoneWithMapData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /zones/recommendations:
+    get:
+      tags:
+        - Zones
+      summary: Fetch smart parking recommendations
+      parameters:
+        - name: originLat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: originLng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+      responses:
+        "200":
+          description: Recommended zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ZoneWithMapData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /zones/{zoneID}/spots:
+    get:
+      tags:
+        - Zones
+      summary: List spots within a zone
+      parameters:
+        - name: zoneID
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of parking spots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSpot"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /zones/{zoneID}/stats:
+    parameters:
+      - name: zoneID
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Zones
+      summary: Get historical statistics for a specific zone
+      responses:
+        "200":
+          description: Historical statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ZoneStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /zones/{zoneID}/predictions:
+    parameters:
+      - name: zoneID
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Zones
+      summary: Get occupancy predictions for a specific time range
+      parameters:
+        - name: startDateTime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: endDateTime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Predicted availability data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Navigation ---
+  /navigation/route:
+    get:
+      tags:
+        - Navigation
+      summary: Generate directions to a parking zone
+      parameters:
+        - name: originLat
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: originLng
+          in: query
+          required: true
+          schema:
+            type: number
+            format: double
+        - name: targetZoneID
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Navigation route payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Route"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # --- Payments ---
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Process parking fee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+      responses:
+        "200":
+          description: Transaction processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "402":
+          description: Payment Required (Transaction declined by gateway)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # --- Administration ---
+  /admin/users:
+    get:
+      tags:
+        - Admin
+      summary: Search and list users for management
+      parameters:
+        - name: query
+          in: query
+          schema:
+            type: string
+          description: Search by name or email
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users/{userId}/role:
+    parameters:
+      - $ref: "#/components/parameters/UserIdParam"
+    patch:
+      tags:
+        - Admin
+      summary: Update a user's institutional role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [student, staff, visitor, admin]
+      responses:
+        "200":
+          description: Role updated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/zones:
+    post:
+      tags:
+        - Admin
+      summary: Create a new parking zone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneWithMapData"
+      responses:
+        "201":
+          description: Zone created
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/zones/{zoneID}:
+    parameters:
+      - name: zoneID
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - Admin
+      summary: Update zone configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneWithMapData"
+      responses:
+        "200":
+          description: Zone updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Admin
+      summary: Remove a parking zone
+      responses:
+        "204":
+          description: Zone deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/violations:
+    get:
+      tags:
+        - Admin
+      summary: Get abnormal parking events
+      responses:
+        "200":
+          description: List of violations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Violation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/zones/{zoneID}/spots/{spotID}/status:
+    parameters:
+      - name: zoneID
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: spotID
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - Admin
+      summary: Simulate sensor event by overriding spot status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [available, occupied]
+      responses:
+        "200":
+          description: Spot status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/reports:
+    get:
+      tags:
+        - Admin
+      summary: Generate analytical reports
+      parameters:
+        - name: reportType
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [occupancy_trends, peak_hours, revenue]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportData"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.campuspark.edu.au/authorize
+          tokenUrl: https://auth.campuspark.edu.au/token
+          scopes:
+            read: Access to read data
+            write: Ability to modify data
+            admin: Full administrative access
+
+  parameters:
+    UserIdParam:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+    VehicleIdParam:
+      name: vehicleId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or malformed JSON body.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication failed or the provided token is invalid/expired.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The authenticated user does not have permission to access this resource.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: The requested resource could not be found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    # --- Identity & Profiles ---
+    User:
+      type: object
+      properties:
+        userID:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [student, staff, visitor, admin]
+
+    UserProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The full name of the user.
+
+    Vehicle:
+      type: object
+      properties:
+        vehicleID:
+          type: integer
+        licensePlate:
+          type: string
+        userID:
+          type: integer
+
+    VehicleRegistrationRequest:
+      type: object
+      required: [licensePlate]
+      properties:
+        licensePlate:
+          type: string
+          description: The alphanumeric license plate of the vehicle being registered.
+
+    TokenExchangeRequest:
+      type: object
+      required: [provider, code, codeVerifier]
+      properties:
+        provider:
+          type: string
+          enum: [google, microsoft]
+          description: The OAuth provider used.
+        code:
+          type: string
+          description: The authorisation code returned by the provider.
+        codeVerifier:
+          type: string
+          description: The PKCE code verifier string.
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: The JWT access token for API requests.
+        expiresIn:
+          type: integer
+          description: Token lifespan in seconds.
+        tokenType:
+          type: string
+          description: Type of token.
+          example: Bearer
+
+    # --- Core Parking Assets ---
+    ZoneWithMapData:
+      type: object
+      properties:
+        zoneID:
+          type: integer
+        name:
+          type: string
+        capacity:
+          type: integer
+        pricePerHour:
+          type: number
+          format: float
+        maxDuration:
+          type: integer
+        accessLevel:
+          type: string
+          enum: [student, staff, visitor]
+        zoneType:
+          type: string
+          enum: [regular, EV, accessible]
+        geoJson:
+          type: object
+          description: Raw GeoJSON Polygon geometry for dashboard map rendering. Stripped of the Feature wrapper to prevent redundant data.
+          example:
+            type: Polygon
+            coordinates:
+              [
+                [
+                  [150.879, -34.405],
+                  [150.880, -34.405],
+                  [150.880, -34.406],
+                  [150.879, -34.405],
+                ],
+              ]
+
+    ParkingSpot:
+      type: object
+      properties:
+        spotID:
+          type: integer
+        spotNumber:
+          type: string
+        status:
+          type: string
+          enum: [available, occupied, reserved]
+        zoneID:
+          type: integer
+
+    ZoneStats:
+      type: object
+      properties:
+        zoneID:
+          type: integer
+        averageOccupancy:
+          type: number
+          format: float
+          description: Percentage (0-100)
+        peakHours:
+          type: array
+          items:
+            type: string
+            description: e.g. "14:00"
+        totalBookingsToday:
+          type: integer
+
+    # --- Operations & Transactions ---
+    BookingRequest:
+      type: object
+      required: [startTime, endTime, userID, spotID, vehicleID]
+      properties:
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        userID:
+          type: integer
+        spotID:
+          type: integer
+        vehicleID:
+          type: integer
+
+    Booking:
+      allOf:
+        - $ref: "#/components/schemas/BookingRequest"
+        - type: object
+          properties:
+            bookingID:
+              type: integer
+            status:
+              type: string
+              enum: [upcoming, active, cancelled]
+
+    ParkingSession:
+      type: object
+      properties:
+        sessionID:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, expiring, completed]
+        userID:
+          type: integer
+        spotID:
+          type: integer
+        vehicleID:
+          type: integer
+
+    PaymentRequest:
+      type: object
+      required: [amount, method, bookingID]
+      properties:
+        amount:
+          type: number
+          format: float
+        method:
+          type: string
+          enum: [card, ApplePay, GooglePay, PayPal]
+        bookingID:
+          type: integer
+
+    Payment:
+      allOf:
+        - $ref: "#/components/schemas/PaymentRequest"
+        - type: object
+          properties:
+            paymentID:
+              type: integer
+            status:
+              type: string
+              enum: [success, failed]
+            paidAt:
+              type: string
+              format: date-time
+
+    Violation:
+      type: object
+      properties:
+        violationID:
+          type: integer
+        type:
+          type: string
+          enum: [overstay, wrongZone, unauthorised]
+        detectedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [unresolved, resolved, escalated]
+        sessionID:
+          type: integer
+        userID:
+          type: integer
+
+    Notification:
+      type: object
+      properties:
+        notificationID:
+          type: integer
+        type:
+          type: string
+          enum: [booking_confirmation, expiry_warning, violation_alert]
+        message:
+          type: string
+        sentAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          description: e.g. "email", "push", "sms"
+
+    # --- Analytics & Spatial ---
+    PredictionResponse:
+      type: object
+      properties:
+        zoneID:
+          type: integer
+        predictions:
+          type: array
+          items:
+            type: object
+            properties:
+              timeSlot:
+                type: string
+                format: date-time
+              probability:
+                type: number
+                format: float
+              estimatedSpotsAvailable:
+                type: integer
+
+    ReportData:
+      type: object
+      properties:
+        title:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        datasets:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              data:
+                type: array
+                items:
+                  type: number
+
+    Route:
+      type: object
+      properties:
+        distanceMeters:
+          type: integer
+        estimatedMinutes:
+          type: integer
+        polyline:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: A brief code or title for the error (e.g., "Bad Request", "Not Found").
+        message:
+          type: string
+          description: A detailed explanation of why the error occurred.
