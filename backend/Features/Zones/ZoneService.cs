@@ -125,12 +125,17 @@ public class ZoneService : IZoneService
         );
     }
 
-    public async Task<PredictionResponseDto> GetPredictionsAsync(int zoneId, DateTime start, DateTime end)
+    public async Task<PredictionResponseDto> GetPredictionsAsync(
+        int zoneId,
+        DateTime start,
+        DateTime end
+    )
     {
-        var zone = await _context.Zones
-            .Include(z => z.Spots)
+        var zone = await _context
+            .Zones.Include(z => z.Spots)
             .FirstOrDefaultAsync(z => z.ZoneID == zoneId);
-        if (zone == null) throw new KeyNotFoundException($"Zone {zoneId} not found.");
+        if (zone == null)
+            throw new KeyNotFoundException($"Zone {zoneId} not found.");
 
         var spotIds = zone.Spots.Select(s => s.SpotID).ToList();
         var now = DateTime.UtcNow;
@@ -138,13 +143,15 @@ public class ZoneService : IZoneService
         // 1. Get Historical Averages (per Hour/DayOfWeek)
         // We'll calculate this on the fly for the range requested
         var monthAgo = now.AddDays(-30);
-        var sessions = await _context.ParkingSessions
-            .Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= monthAgo)
+        var sessions = await _context
+            .ParkingSessions.Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= monthAgo)
             .ToListAsync();
 
         // 2. Get Specific Future Bookings in the range
-        var bookings = await _context.Bookings
-            .Where(b => spotIds.Contains(b.SpotID) && b.StartTime >= start && b.StartTime <= end)
+        var bookings = await _context
+            .Bookings.Where(b =>
+                spotIds.Contains(b.SpotID) && b.StartTime >= start && b.StartTime <= end
+            )
             .ToListAsync();
 
         var predictions = new List<PredictionItemDto>();
@@ -153,15 +160,18 @@ public class ZoneService : IZoneService
             // A. Historical Occupancy for this hour/day
             var day = slot.DayOfWeek;
             var hour = slot.Hour;
-            
-            var histSessions = sessions.Where(s => s.StartTime.DayOfWeek == day && s.StartTime.Hour == hour).ToList();
+
+            var histSessions = sessions
+                .Where(s => s.StartTime.DayOfWeek == day && s.StartTime.Hour == hour)
+                .ToList();
             // Count occurrences of this day in the 30-day window
             int dayOccurrences = 0;
-            for (int i = 0; i < 30; i++) if (now.AddDays(-i).DayOfWeek == day) dayOccurrences++;
-            
-            double histAvgCount = dayOccurrences > 0 
-                ? histSessions.Count / (double)dayOccurrences 
-                : 0;
+            for (int i = 0; i < 30; i++)
+                if (now.AddDays(-i).DayOfWeek == day)
+                    dayOccurrences++;
+
+            double histAvgCount =
+                dayOccurrences > 0 ? histSessions.Count / (double)dayOccurrences : 0;
 
             // B. Booking Count for this specific hour
             double bookingCount = bookings.Count(b => b.StartTime <= slot && b.EndTime > slot);
