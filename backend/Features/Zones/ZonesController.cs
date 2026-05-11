@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -74,7 +75,22 @@ public class ZonesController : ControllerBase
     }
 
     [HttpGet("zones/{zoneId}/predictions")]
-    public IActionResult GetPredictions() => Ok();
+    public async Task<ActionResult<PredictionResponseDto>> GetPredictions(
+        int zoneId,
+        [FromQuery, Required] DateTime startDateTime,
+        [FromQuery, Required] DateTime endDateTime
+    )
+    {
+        try
+        {
+            var predictions = await _zoneService.GetPredictionsAsync(zoneId, startDateTime, endDateTime);
+            return Ok(predictions);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
 
     [HttpGet("zones/recommendations")]
     public async Task<ActionResult<IEnumerable<ZoneDto>>> GetRecommendations(

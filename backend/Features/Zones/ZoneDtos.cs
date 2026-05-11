@@ -26,3 +26,14 @@ public record ZoneStatsDto(
     TrendItemDto[] WeeklyTrends,
     TrendItemDto[] HourlyTrends
 );
+
+public record PredictionItemDto(
+    DateTime TimeSlot,
+    double Probability,
+    int EstimatedSpotsAvailable
+);
+
+public record PredictionResponseDto(
+    int ZoneID,
+    PredictionItemDto[] Predictions
+);
