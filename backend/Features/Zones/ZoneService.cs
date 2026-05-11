@@ -17,15 +17,13 @@ public class ZoneService : IZoneService
 
     public async Task<IEnumerable<Zone>> GetRecommendedZonesAsync(double userLat, double userLng)
     {
-        var zones = await _context.Zones
-            .Include(z => z.Spots)
-            .ToListAsync();
+        var zones = await _context.Zones.Include(z => z.Spots).ToListAsync();
 
         return zones
             .Select(zone => new
             {
                 Zone = zone,
-                Score = CalculateSmartScore(userLat, userLng, zone)
+                Score = CalculateSmartScore(userLat, userLng, zone),
             })
             .OrderBy(z => z.Score)
             .Select(z => z.Zone);
@@ -33,11 +31,12 @@ public class ZoneService : IZoneService
 
     public async Task<ZoneStatsDto> GetZoneStatsAsync(int zoneId)
     {
-        var zone = await _context.Zones
-            .Include(z => z.Spots)
+        var zone = await _context
+            .Zones.Include(z => z.Spots)
             .FirstOrDefaultAsync(z => z.ZoneID == zoneId);
 
-        if (zone == null) throw new KeyNotFoundException($"Zone {zoneId} not found.");
+        if (zone == null)
+            throw new KeyNotFoundException($"Zone {zoneId} not found.");
 
         var spotIds = zone.Spots.Select(s => s.SpotID).ToList();
         var now = DateTime.UtcNow;
@@ -46,8 +45,8 @@ public class ZoneService : IZoneService
 
         // 1. Average Occupancy (Last 30 days)
         // Utility = (Sum of all Session Durations) / (Total Capacity * 30d * 24h)
-        var sessionsMonth = await _context.ParkingSessions
-            .Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= monthAgo)
+        var sessionsMonth = await _context
+            .ParkingSessions.Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= monthAgo)
             .ToListAsync();
 
         double totalSessionSeconds = 0;
@@ -59,12 +58,11 @@ public class ZoneService : IZoneService
         }
 
         var totalPotentialSeconds = zone.Spots.Count * 86400.0 * 30;
-        var avgOccupancy = totalPotentialSeconds > 0 
-            ? (totalSessionSeconds / totalPotentialSeconds) * 100 
-            : 0;
-        
-        var sessionsWeek = await _context.ParkingSessions
-            .Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= weekAgo)
+        var avgOccupancy =
+            totalPotentialSeconds > 0 ? (totalSessionSeconds / totalPotentialSeconds) * 100 : 0;
+
+        var sessionsWeek = await _context
+            .ParkingSessions.Where(s => spotIds.Contains(s.SpotID) && s.StartTime >= weekAgo)
             .ToListAsync();
 
         // 2. Weekly Trends (Last 30 days, grouped by Day of Week)
@@ -78,7 +76,7 @@ public class ZoneService : IZoneService
 
         var weeklyTrends = sessionsMonth
             .GroupBy(s => s.StartTime.DayOfWeek)
-            .Select(g => 
+            .Select(g =>
             {
                 var totalSeconds = 0.0;
                 foreach (var s in g)
@@ -87,7 +85,7 @@ public class ZoneService : IZoneService
                     var start = s.StartTime < monthAgo ? monthAgo : s.StartTime;
                     totalSeconds += (end - start).TotalSeconds;
                 }
-                
+
                 var occurrences = dayCounts.GetValueOrDefault(g.Key, 1);
                 var avg = (totalSeconds / (zone.Spots.Count * 86400.0 * occurrences)) * 100;
                 return new TrendItemDto(g.Key.ToString().ToUpper()[..3], Math.Round(avg, 1));
@@ -96,8 +94,9 @@ public class ZoneService : IZoneService
 
         // Ensure all days are present
         var days = new[] { "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" };
-        weeklyTrends = days
-            .Select(d => weeklyTrends.FirstOrDefault(t => t.Label == d) ?? new TrendItemDto(d, 0.0))
+        weeklyTrends = days.Select(d =>
+                weeklyTrends.FirstOrDefault(t => t.Label == d) ?? new TrendItemDto(d, 0.0)
+            )
             .ToArray();
 
         // 3. Hourly Trends (Last 7 days, averaged by hour)
@@ -105,13 +104,17 @@ public class ZoneService : IZoneService
         for (int h = 0; h < 24; h++)
         {
             // Simplified hourly logic: % of time this hour was occupied over last 7 days
-            var sessionsInHour = sessionsWeek.Where(s => 
-                (s.StartTime.Hour <= h && (s.EndTime ?? now).Hour >= h) ||
-                (s.StartTime.Hour <= h && (s.EndTime ?? now).Day > s.StartTime.Day)
-            ).ToList();
-            
+            var sessionsInHour = sessionsWeek
+                .Where(s =>
+                    (s.StartTime.Hour <= h && (s.EndTime ?? now).Hour >= h)
+                    || (s.StartTime.Hour <= h && (s.EndTime ?? now).Day > s.StartTime.Day)
+                )
+                .ToList();
+
             var hourAvg = (sessionsInHour.Count / (zone.Spots.Count * 7.0)) * 100;
-            hourlyTrends.Add(new TrendItemDto($"{h:D2}:00", Math.Round(Math.Min(hourAvg, 100.0), 1)));
+            hourlyTrends.Add(
+                new TrendItemDto($"{h:D2}:00", Math.Round(Math.Min(hourAvg, 100.0), 1))
+            );
         }
 
         return new ZoneStatsDto(
