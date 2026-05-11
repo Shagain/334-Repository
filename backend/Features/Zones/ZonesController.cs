@@ -1,5 +1,8 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SmartParking.Infrastructure.Data;
 
 namespace SmartParking.Features.Zones;
 
@@ -7,18 +10,80 @@ namespace SmartParking.Features.Zones;
 [Authorize]
 public class ZonesController : ControllerBase
 {
-    [HttpGet("zones")]
-    public IActionResult GetZones() => Ok();
+    private readonly AppDbContext _context;
+    private readonly IZoneService _zoneService;
 
-    [HttpGet("zones/recommendations")]
-    public IActionResult GetRecommendations() => Ok();
+    public ZonesController(AppDbContext context, IZoneService zoneService)
+    {
+        _context = context;
+        _zoneService = zoneService;
+    }
+
+    [HttpGet("zones")]
+    public async Task<ActionResult<IEnumerable<ZoneDto>>> GetZones()
+    {
+        var zones = await _context
+            .Zones.Select(z => new ZoneDto(
+                z.ZoneID,
+                z.Name,
+                z.Capacity,
+                z.PricePerHour,
+                z.MaxDuration,
+                z.AccessLevel.ToString().ToLower(),
+                z.ZoneType.ToString().ToLower(),
+                JsonSerializer.Deserialize<object>(z.GeoJson, (JsonSerializerOptions?)null)
+                    ?? new { }
+            ))
+            .ToListAsync();
+
+        return Ok(zones);
+    }
 
     [HttpGet("zones/{zoneId}/spots")]
-    public IActionResult GetSpots() => Ok();
+    public async Task<ActionResult<IEnumerable<ParkingSpotDto>>> GetSpots(int zoneId)
+    {
+        var zoneExists = await _context.Zones.AnyAsync(z => z.ZoneID == zoneId);
+        if (!zoneExists)
+            return NotFound();
+
+        var spots = await _context
+            .ParkingSpots.Where(s => s.ZoneID == zoneId)
+            .Select(s => new ParkingSpotDto(
+                s.SpotID,
+                s.SpotNumber,
+                s.Status.ToString().ToLower(),
+                s.ZoneID
+            ))
+            .ToListAsync();
+
+        return Ok(spots);
+    }
 
     [HttpGet("zones/{zoneId}/stats")]
     public IActionResult GetStats() => Ok();
 
     [HttpGet("zones/{zoneId}/predictions")]
     public IActionResult GetPredictions() => Ok();
+
+    [HttpGet("zones/recommendations")]
+    public async Task<ActionResult<IEnumerable<ZoneDto>>> GetRecommendations(
+        double originLat,
+        double originLng
+    )
+    {
+        var recommendedZones = await _zoneService.GetRecommendedZonesAsync(originLat, originLng);
+
+        var result = recommendedZones.Select(z => new ZoneDto(
+            z.ZoneID,
+            z.Name,
+            z.Capacity,
+            z.PricePerHour,
+            z.MaxDuration,
+            z.AccessLevel.ToString().ToLower(),
+            z.ZoneType.ToString().ToLower(),
+            JsonSerializer.Deserialize<object>(z.GeoJson, (JsonSerializerOptions?)null) ?? new { }
+        ));
+
+        return Ok(result);
+    }
 }
