@@ -17,3 +17,12 @@ public record ParkingSpotDto(
     string Status,
     int ZoneID
 );
+
+public record TrendItemDto(string Label, double Value);
+
+public record ZoneStatsDto(
+    int ZoneID,
+    double AverageOccupancy,
+    TrendItemDto[] WeeklyTrends,
+    TrendItemDto[] HourlyTrends
+);

@@ -60,7 +60,18 @@ public class ZonesController : ControllerBase
     }
 
     [HttpGet("zones/{zoneId}/stats")]
-    public IActionResult GetStats() => Ok();
+    public async Task<ActionResult<ZoneStatsDto>> GetStats(int zoneId)
+    {
+        try
+        {
+            var stats = await _zoneService.GetZoneStatsAsync(zoneId);
+            return Ok(stats);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
 
     [HttpGet("zones/{zoneId}/predictions")]
     public IActionResult GetPredictions() => Ok();

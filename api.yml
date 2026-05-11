@@ -908,13 +908,37 @@ components:
           type: number
           format: float
           description: Percentage (0-100)
-        peakHours:
+        weeklyTrends:
           type: array
           items:
-            type: string
-            description: e.g. "14:00"
-        totalBookingsToday:
-          type: integer
+            $ref: "#/components/schemas/TrendItem"
+          example:
+            - label: MON
+              value: 85.0
+            - label: TUE
+              value: 42.1
+        hourlyTrends:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendItem"
+          example:
+            - label: "09:00"
+              value: 15.5
+            - label: "14:00"
+              value: 92.0
+
+    TrendItem:
+      type: object
+      properties:
+        label:
+          type: string
+          description: Short day name (e.g., "MON") or 24h time (e.g., "14:00").
+          example: MON
+        value:
+          type: number
+          format: float
+          description: Occupancy percentage (0-100)
+          example: 85.5
 
     # --- Operations & Transactions ---
     BookingRequest:

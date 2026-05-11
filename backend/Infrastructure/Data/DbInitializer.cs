@@ -7,14 +7,26 @@ public static class DbInitializer
 {
     public static void Seed(AppDbContext context)
     {
-        // 1. Check if we have any users - if so, assume it's already seeded
-        if (context.Users.Any()) return;
+        // 1. Seed Users
+        var admin = new User
+        {
+            Name = "Admin User",
+            Email = "admin@campus.edu",
+            Role = UserRole.Admin,
+        };
+        var student = new User
+        {
+            Name = "John Student",
+            Email = "john@student.edu",
+            Role = UserRole.Student,
+        };
+        var staff = new User
+        {
+            Name = "Jane Staff",
+            Email = "jane@staff.edu",
+            Role = UserRole.Staff,
+        };
 
-        // 2. Seed Users
-        var admin = new User { Name = "Admin User", Email = "admin@campus.edu", Role = UserRole.Admin };
-        var student = new User { Name = "John Student", Email = "john@student.edu", Role = UserRole.Student };
-        var staff = new User { Name = "Jane Staff", Email = "jane@staff.edu", Role = UserRole.Staff };
-        
         context.Users.AddRange(admin, student, staff);
         context.SaveChanges(); // Need IDs for foreign keys
 
@@ -27,7 +39,8 @@ public static class DbInitializer
             MaxDuration = 10,
             AccessLevel = AccessLevel.Staff,
             ZoneType = ZoneType.EV,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.878005, -34.407659], [150.878604, -34.407742], [150.878655, -34.407442], [150.878059, -34.407365], [150.878005, -34.407659]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.878005, -34.407659], [150.878604, -34.407742], [150.878655, -34.407442], [150.878059, -34.407365], [150.878005, -34.407659]]]}",
         };
 
         var p2Zone = new Zone
@@ -38,7 +51,8 @@ public static class DbInitializer
             MaxDuration = 8,
             AccessLevel = AccessLevel.Student,
             ZoneType = ZoneType.Regular,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.877957, -34.406783], [150.87777, -34.406763], [150.877662, -34.406753], [150.877337, -34.406712], [150.877269, -34.406706], [150.87721, -34.40702], [150.877553, -34.407328], [150.877739, -34.407468], [150.877838, -34.407515], [150.877957, -34.406783]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.877957, -34.406783], [150.87777, -34.406763], [150.877662, -34.406753], [150.877337, -34.406712], [150.877269, -34.406706], [150.87721, -34.40702], [150.877553, -34.407328], [150.877739, -34.407468], [150.877838, -34.407515], [150.877957, -34.406783]]]}",
         };
 
         var p3Zone = new Zone
@@ -49,7 +63,8 @@ public static class DbInitializer
             MaxDuration = 6,
             AccessLevel = AccessLevel.Student,
             ZoneType = ZoneType.Regular,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.873886, -34.405726], [150.87456, -34.405811], [150.874802, -34.405909], [150.875027, -34.406037], [150.875181, -34.406153], [150.874541, -34.406548], [150.873728, -34.406428], [150.873792, -34.406118], [150.873819, -34.405992], [150.873886, -34.405726]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.873886, -34.405726], [150.87456, -34.405811], [150.874802, -34.405909], [150.875027, -34.406037], [150.875181, -34.406153], [150.874541, -34.406548], [150.873728, -34.406428], [150.873792, -34.406118], [150.873819, -34.405992], [150.873886, -34.405726]]]}",
         };
 
         var p4Zone = new Zone
@@ -60,7 +75,8 @@ public static class DbInitializer
             MaxDuration = 8,
             AccessLevel = AccessLevel.Student,
             ZoneType = ZoneType.Regular,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.873009, -34.40328], [150.87482, -34.403497], [150.874747, -34.40396], [150.874714, -34.404199], [150.874446, -34.404172], [150.874371, -34.404695], [150.874092, -34.404659], [150.874081, -34.404482], [150.87317, -34.404367], [150.872944, -34.403969], [150.872955, -34.403721], [150.873009, -34.40328]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.873009, -34.40328], [150.87482, -34.403497], [150.874747, -34.40396], [150.874714, -34.404199], [150.874446, -34.404172], [150.874371, -34.404695], [150.874092, -34.404659], [150.874081, -34.404482], [150.87317, -34.404367], [150.872944, -34.403969], [150.872955, -34.403721], [150.873009, -34.40328]]]}",
         };
 
         var p5Zone = new Zone
@@ -71,7 +87,8 @@ public static class DbInitializer
             MaxDuration = 4,
             AccessLevel = AccessLevel.Student,
             ZoneType = ZoneType.Regular,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.877518, -34.401721], [150.878, -34.401778], [150.877873, -34.402447], [150.878385, -34.402526], [150.878736, -34.402796], [150.878545, -34.403856], [150.877633, -34.40373], [150.87637, -34.403598], [150.876452, -34.403477], [150.876645, -34.403502], [150.876704, -34.403404], [150.877027, -34.403343], [150.877221, -34.403332], [150.877251, -34.403051], [150.877486, -34.401833], [150.877518, -34.401721]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.877518, -34.401721], [150.878, -34.401778], [150.877873, -34.402447], [150.878385, -34.402526], [150.878736, -34.402796], [150.878545, -34.403856], [150.877633, -34.40373], [150.87637, -34.403598], [150.876452, -34.403477], [150.876645, -34.403502], [150.876704, -34.403404], [150.877027, -34.403343], [150.877221, -34.403332], [150.877251, -34.403051], [150.877486, -34.401833], [150.877518, -34.401721]]]}",
         };
 
         var p6Zone = new Zone
@@ -82,7 +99,8 @@ public static class DbInitializer
             MaxDuration = 2,
             AccessLevel = AccessLevel.Visitor,
             ZoneType = ZoneType.EV,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.879537, -34.403047], [150.879453, -34.403531], [150.880248, -34.403613], [150.880324, -34.403142], [150.879537, -34.403047]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.879537, -34.403047], [150.879453, -34.403531], [150.880248, -34.403613], [150.880324, -34.403142], [150.879537, -34.403047]]]}",
         };
 
         var p8Zone = new Zone
@@ -93,7 +111,8 @@ public static class DbInitializer
             MaxDuration = 4,
             AccessLevel = AccessLevel.Student,
             ZoneType = ZoneType.EV,
-            GeoJson = "{\"type\": \"Polygon\", \"coordinates\": [[[150.880614, -34.407523], [150.881725, -34.407642], [150.881687, -34.407979], [150.881641, -34.408267], [150.880452, -34.408132], [150.880494, -34.407851], [150.880509, -34.407849], [150.880529, -34.407762], [150.880578, -34.407721], [150.880614, -34.407523]]]}"
+            GeoJson =
+                "{\"type\": \"Polygon\", \"coordinates\": [[[150.880614, -34.407523], [150.881725, -34.407642], [150.881687, -34.407979], [150.881641, -34.408267], [150.880452, -34.408132], [150.880494, -34.407851], [150.880509, -34.407849], [150.880529, -34.407762], [150.880578, -34.407721], [150.880614, -34.407523]]]}",
         };
 
         context.Zones.AddRange(p1Zone, p2Zone, p3Zone, p4Zone, p5Zone, p6Zone, p8Zone);
@@ -101,17 +120,19 @@ public static class DbInitializer
 
         // 4. Seed Spots (Auto-Generate based on Capacity)
         var allSpots = new List<ParkingSpot>();
-        
+
         void AddSpots(Zone zone, string prefix)
         {
             for (int i = 1; i <= zone.Capacity; i++)
             {
-                allSpots.Add(new ParkingSpot 
-                { 
-                    SpotNumber = $"{prefix}-{i:D3}", 
-                    Status = SpotStatus.Available, 
-                    ZoneID = zone.ZoneID 
-                });
+                allSpots.Add(
+                    new ParkingSpot
+                    {
+                        SpotNumber = $"{prefix}-{i:D3}",
+                        Status = SpotStatus.Available,
+                        ZoneID = zone.ZoneID,
+                    }
+                );
             }
         }
 
@@ -138,65 +159,132 @@ public static class DbInitializer
         context.SaveChanges();
 
         // 6. Seed Booking & Payment
-        var booking = new Booking 
-        { 
-            StartTime = DateTime.UtcNow.AddHours(1), 
-            EndTime = DateTime.UtcNow.AddHours(3), 
+        var booking = new Booking
+        {
+            StartTime = DateTime.UtcNow.AddHours(1),
+            EndTime = DateTime.UtcNow.AddHours(3),
             Status = BookingStatus.Upcoming,
             UserID = student.UserID,
             SpotID = firstP1Spot.SpotID,
-            VehicleID = studentCar.VehicleID
+            VehicleID = studentCar.VehicleID,
         };
         context.Bookings.Add(booking);
         context.SaveChanges();
 
-        var payment = new Payment 
-        { 
-            Amount = 5.00, 
-            Method = "card", 
-            Status = PaymentStatus.Paid, 
-            PaidAt = DateTime.UtcNow, 
-            BookingID = booking.BookingID 
+        var payment = new Payment
+        {
+            Amount = 5.00,
+            Method = "card",
+            Status = PaymentStatus.Paid,
+            PaidAt = DateTime.UtcNow,
+            BookingID = booking.BookingID,
         };
         context.Payments.Add(payment);
 
         // 7. Seed Session & Violation
-        var session = new ParkingSession 
-        { 
-            StartTime = DateTime.UtcNow.AddHours(-1), 
+        var session = new ParkingSession
+        {
+            StartTime = DateTime.UtcNow.AddHours(-1),
             Status = "Active",
             UserID = staff.UserID,
             SpotID = firstP2Spot.SpotID,
-            VehicleID = staffCar.VehicleID
+            VehicleID = staffCar.VehicleID,
         };
         context.ParkingSessions.Add(session);
         context.SaveChanges();
-        
+
         // Mark the session spot as occupied
         firstP2Spot.Status = SpotStatus.Occupied;
         context.SaveChanges();
 
-        var violation = new Violation 
-        { 
-            Type = ViolationType.Overstay, 
-            DetectedAt = DateTime.UtcNow, 
+        var violation = new Violation
+        {
+            Type = ViolationType.Overstay,
+            DetectedAt = DateTime.UtcNow,
             Status = ViolationStatus.Unresolved,
             SessionID = session.SessionID,
-            UserID = staff.UserID
+            UserID = staff.UserID,
         };
         context.Violations.Add(violation);
 
         // 8. Seed Notification
-        var note = new Notification 
-        { 
-            Type = "booking_confirmation", 
-            Message = $"Your booking for {firstP1Spot.SpotNumber} is confirmed.", 
+        var note = new Notification
+        {
+            Type = "booking_confirmation",
+            Message = $"Your booking for {firstP1Spot.SpotNumber} is confirmed.",
             Channel = "email",
             SentAt = DateTime.UtcNow,
-            UserID = student.UserID
+            UserID = student.UserID,
         };
         context.Notifications.Add(note);
 
         context.SaveChanges();
+
+        // 9. Generate Ghost History
+        GenerateGhostHistory(context, allSpots, student.UserID, studentCar.VehicleID);
+        context.SaveChanges();
+    }
+
+    private static void GenerateGhostHistory(
+        AppDbContext context,
+        List<ParkingSpot> spots,
+        int userId,
+        int vehicleId
+    )
+    {
+        var random = new Random(42); // Fixed seed for consistent "ghost" data
+        var now = DateTime.UtcNow;
+        var sessions = new List<ParkingSession>();
+
+        foreach (var spot in spots)
+        {
+            // Only seed ~80% of spots for high-density simulation
+            if (random.NextDouble() > 0.8)
+                continue;
+
+            var zonePrefix = spot.SpotNumber.Split('-')[0];
+
+            for (int day = 0; day <= 30; day++)
+            {
+                var date = now.Date.AddDays(-day);
+
+                // Traffic Profile: Peak hour + multiple turnovers
+                int peakStart = zonePrefix switch
+                {
+                    "P1" or "P2" => 7,
+                    "P6" or "P8" => 11,
+                    _ => 9,
+                };
+
+                var currentTime = date.AddHours(peakStart).AddMinutes(random.Next(0, 60));
+                int turnovers = random.Next(1, 4); // 1 to 3 cars per spot per day
+
+                for (int t = 0; t < turnovers; t++)
+                {
+                    int durationHours = random.Next(1, 4);
+                    var endTime = currentTime.AddHours(durationHours);
+
+                    if (endTime.Day != date.Day)
+                        break; // Don't bleed into next day
+
+                    sessions.Add(
+                        new ParkingSession
+                        {
+                            SpotID = spot.SpotID,
+                            UserID = userId,
+                            VehicleID = vehicleId,
+                            StartTime = currentTime,
+                            EndTime = endTime,
+                            Status = "Completed",
+                        }
+                    );
+
+                    // Add a gap before the next car arrives
+                    currentTime = endTime.AddMinutes(random.Next(15, 60));
+                }
+            }
+        }
+
+        context.ParkingSessions.AddRange(sessions);
     }
 }
