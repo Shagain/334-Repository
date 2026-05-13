@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../services/auth_service.dart';
+import '../app_keys.dart';
+import '../auth/microsoft_oauth.dart';
 import '../services/api_client.dart';
+import '../services/auth_service.dart';
 import 'vehicle_registration_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -15,95 +19,153 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _authService = AuthService();
   String? _loadingProvider;
+  bool _bootstrappingOAuth = true;
 
-  Future<void> _continueWithProvider(String provider) async {
-    final credentials = await _showAuthCodeDialog(provider);
-    if (credentials == null) return;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapOAuthReturn());
+  }
 
-    setState(() => _loadingProvider = provider);
+  void _notifyUser(String text, {Duration duration = const Duration(seconds: 8)}) {
+    appScaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
+        backgroundColor: const Color(0xFF1a1a2e),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: duration,
+      ),
+    );
+  }
 
+  /// If [dotenv] failed to load, [dotenv.get] can throw — treat as empty.
+  String _readDotenv(String key) {
     try {
-      await _authService.exchangeToken(
-        provider: provider,
-        code: credentials.code,
-        codeVerifier: credentials.codeVerifier,
-      );
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const VehicleRegistrationPage()),
-      );
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _loadingProvider = null);
+      return dotenv.get(key, fallback: '').trim();
+    } catch (_) {
+      return '';
     }
   }
 
-  Future<_AuthCodeInput?> _showAuthCodeDialog(String provider) async {
-    final codeController = TextEditingController();
-    final verifierController = TextEditingController();
+  /// If the user landed here after Microsoft redirected back with ?code=&state=, finish sign-in.
+  Future<void> _bootstrapOAuthReturn() async {
+    if (!kIsWeb) {
+      if (mounted) setState(() => _bootstrappingOAuth = false);
+      return;
+    }
 
-    return showDialog<_AuthCodeInput>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('${provider[0].toUpperCase()}${provider.substring(1)} auth'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Temporary test step: paste the OAuth authorisation code and PKCE verifier. Later this will be replaced by the real Google/Microsoft sign-in flow.',
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Authorisation code',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: verifierController,
-                decoration: const InputDecoration(
-                  labelText: 'Code verifier',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final code = codeController.text.trim();
-                final verifier = verifierController.text.trim();
-                if (code.isEmpty || verifier.isEmpty) return;
-
-                Navigator.pop(
-                  context,
-                  _AuthCodeInput(code: code, codeVerifier: verifier),
-                );
-              },
-              child: const Text('Exchange token'),
-            ),
-          ],
-        );
+    final handled = await tryHandleMicrosoftOAuthReturn(
+      onSuccess: (code, verifier, redirectUri) async {
+        setState(() => _loadingProvider = 'microsoft');
+        try {
+          await _authService.exchangeToken(
+            provider: 'microsoft',
+            code: code,
+            codeVerifier: verifier,
+            redirectUri: redirectUri,
+          );
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const VehicleRegistrationPage()),
+          );
+        } on ApiException catch (e) {
+          if (!mounted) return;
+          _notifyUser(e.message);
+        } finally {
+          if (mounted) setState(() => _loadingProvider = null);
+        }
+      },
+      onError: (message) {
+        if (!mounted) return;
+        _notifyUser(message);
       },
     );
+
+    if (handled && mounted) {
+      // Navigation may have occurred; still clear bootstrap flag.
+      setState(() => _bootstrappingOAuth = false);
+      return;
+    }
+
+    if (mounted) setState(() => _bootstrappingOAuth = false);
+  }
+
+  String _microsoftTenantId() {
+    const fromDefine = String.fromEnvironment('MICROSOFT_TENANT_ID', defaultValue: '');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return _readDotenv('MICROSOFT_TENANT_ID');
+  }
+
+  String _microsoftClientId() {
+    const fromDefine = String.fromEnvironment('MICROSOFT_CLIENT_ID', defaultValue: '');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    return _readDotenv('MICROSOFT_CLIENT_ID');
+  }
+
+  String _microsoftRedirectUri() {
+    const fromDefine = String.fromEnvironment('MICROSOFT_REDIRECT_URI', defaultValue: '');
+    if (fromDefine.isNotEmpty) return fromDefine;
+    final fromDot = _readDotenv('MICROSOFT_REDIRECT_URI');
+    if (fromDot.isNotEmpty) return fromDot;
+    final origin = Uri.base.origin;
+    return origin.endsWith('/') ? origin : '$origin/';
+  }
+
+  Future<void> _continueWithMicrosoft() async {
+    if (!kIsWeb) {
+      if (!mounted) return;
+      _notifyUser('Microsoft sign-in runs in the web app. Use: flutter run -d edge --web-port=8080');
+      return;
+    }
+
+    final tenantId = _microsoftTenantId();
+    final clientId = _microsoftClientId();
+    if (tenantId.isEmpty || clientId.isEmpty) {
+      if (!mounted) return;
+      _notifyUser(
+        'Missing MICROSOFT_TENANT_ID or MICROSOFT_CLIENT_ID. '
+        'Fill frontend/.env then stop and run flutter again (hot reload does not reload .env).',
+      );
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Microsoft sign-in not configured'),
+          content: const Text(
+            'Add your Azure values to the file frontend/.env next to pubspec.yaml:\n\n'
+            'MICROSOFT_TENANT_ID=your-tenant-guid\n'
+            'MICROSOFT_CLIENT_ID=your-client-guid\n\n'
+            'Then fully restart the app (not only hot reload).',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    setState(() => _loadingProvider = 'microsoft');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        startMicrosoftSignIn(
+          tenantId: tenantId,
+          clientId: clientId,
+          redirectUri: _microsoftRedirectUri(),
+        );
+      } on UnsupportedError catch (e) {
+        if (!mounted) return;
+        setState(() => _loadingProvider = null);
+        _notifyUser(e.message ?? 'Not supported');
+      } catch (e, st) {
+        debugPrint('$e\n$st');
+        if (!mounted) return;
+        setState(() => _loadingProvider = null);
+        _notifyUser('Could not start Microsoft sign-in: $e');
+      }
+    });
   }
 
   @override
@@ -113,6 +175,12 @@ class _LoginPageState extends State<LoginPage> {
     const cardBackground = Colors.white;
     const mutedText = Color(0xFF8B8E99);
     const borderColor = Color(0xFFE6E8EF);
+
+    if (_bootstrappingOAuth) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -168,46 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                         height: 18,
                       ),
                     ),
-                    onTap: () => _continueWithProvider('microsoft'),
-                  ),
-                  const SizedBox(height: 12),
-                  _SocialButton(
-                    label: 'Continue with Google',
-                    isLoading: _loadingProvider == 'google',
-                    backgroundColor: Colors.white,
-                    textColor: Colors.black,
-                    borderColor: borderColor,
-                    icon: _BrandBox(
-                      backgroundColor: Colors.transparent,
-                      child: SvgPicture.asset(
-                        'assets/images/google.svg',
-                        width: 18,
-                        height: 18,
-                      ),
-                    ),
-                    onTap: () => _continueWithProvider('google'),
-                  ),
-                  const SizedBox(height: 12),
-                  _SocialButton(
-                    label: 'Continue with Apple',
-                    isLoading: false,
-                    backgroundColor: Colors.black,
-                    textColor: Colors.white,
-                    borderColor: Colors.black,
-                    icon: _BrandBox(
-                      backgroundColor: Colors.black,
-                      child: SvgPicture.asset(
-                        'assets/images/apple.svg',
-                        width: 18,
-                        height: 18,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Apple is not in the Swagger auth provider enum yet.')),
-                      );
-                    },
+                    onTap: _continueWithMicrosoft,
                   ),
                   const SizedBox(height: 26),
                   RichText(
@@ -244,13 +273,6 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-}
-
-class _AuthCodeInput {
-  final String code;
-  final String codeVerifier;
-
-  const _AuthCodeInput({required this.code, required this.codeVerifier});
 }
 
 class _SocialButton extends StatelessWidget {

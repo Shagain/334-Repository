@@ -9,15 +9,19 @@ class AuthService {
     required String provider,
     required String code,
     required String codeVerifier,
+    String? redirectUri,
   }) async {
+    final body = <String, dynamic>{
+      'provider': provider,
+      'code': code,
+      'codeVerifier': codeVerifier,
+      if (redirectUri != null && redirectUri.isNotEmpty) 'redirectUri': redirectUri,
+    };
+
     final response = await _apiClient.post(
       '/auth/token',
       authenticated: false,
-      body: {
-        'provider': provider,
-        'code': code,
-        'codeVerifier': codeVerifier,
-      },
+      body: body,
     );
 
     if (response is! Map<String, dynamic>) {

@@ -1,7 +1,16 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
+/// Default API root: local Docker in debug, production URL in release.
+String _defaultApiBaseUrl() {
+  const fromEnv = String.fromEnvironment('API_BASE_URL');
+  if (fromEnv.isNotEmpty) return fromEnv;
+  if (kDebugMode) return 'http://localhost:5000';
+  return 'https://api.campuspark.edu.au/v1';
+}
 
 class ApiException implements Exception {
   final int statusCode;
@@ -20,7 +29,7 @@ class ApiClient {
     String? baseUrl,
   })  : _httpClient = httpClient ?? http.Client(),
         _storage = storage ?? const FlutterSecureStorage(),
-        baseUrl = baseUrl ?? 'https://api.campuspark.edu.au/v1';
+        baseUrl = baseUrl ?? _defaultApiBaseUrl();
 
   final http.Client _httpClient;
   final FlutterSecureStorage _storage;
