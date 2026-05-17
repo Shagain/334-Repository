@@ -3,15 +3,61 @@ import 'dashboard_page.dart';
 import 'bookings_page.dart';
 import 'payment_methods_page.dart';
 import 'app_state.dart';
+import '../services/vehicle_service.dart';
+import '../models/vehicle.dart';
+import '../services/user_service.dart';
+import '../models/user.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final VehicleService _vehicleService = VehicleService();
+  final UserService _userService = UserService();
+
+  List<Vehicle> vehicles = [];
+  User? currentUser;
+
+  bool isLoadingVehicles = true;
+  bool isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadVehicles();
+    loadUser();
+  }
+
+  Future<void> loadVehicles() async {
+    final loadedVehicles = await _vehicleService.getVehicles();
+
+    if (!mounted) return;
+
+    setState(() {
+      vehicles = loadedVehicles;
+      isLoadingVehicles = false;
+    });
+  }
+
+  Future<void> loadUser() async {
+    final loadedUser = await _userService.getCurrentUser();
+
+    if (!mounted) return;
+
+    setState(() {
+      currentUser = loadedUser;
+      isLoadingUser = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF0D2E9B);
     const lightBackground = Color(0xFFF7F7FA);
-    const mutedText = Color(0xFF8B8E99);
 
     return Scaffold(
       backgroundColor: lightBackground,
@@ -41,9 +87,9 @@ class ProfilePage extends StatelessWidget {
                         color: primaryBlue,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          CircleAvatar(
+                          const CircleAvatar(
                             radius: 34,
                             backgroundColor: Colors.white,
                             child: Icon(
@@ -52,31 +98,39 @@ class ProfilePage extends StatelessWidget {
                               color: primaryBlue,
                             ),
                           ),
-                          SizedBox(width: 16),
+                          const SizedBox(width: 16),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Conle',
-                                  style: TextStyle(
+                            child: isLoadingUser
+                                ? const CircularProgressIndicator(
                                     color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
+                                  )
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        currentUser?.name ?? '',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Student ID: S1234567',
+                                        style:
+                                            TextStyle(color: Colors.white70),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        currentUser?.email ?? '',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Student ID: S1234567',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'conle@student.edu.au',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              ],
-                            ),
                           ),
                         ],
                       ),
@@ -84,23 +138,50 @@ class ProfilePage extends StatelessWidget {
 
                     const SizedBox(height: 18),
 
-                    const _InfoCard(
+                    _InfoCard(
                       title: 'Account Information',
                       children: [
-                        _InfoRow(label: 'Role', value: 'Student'),
-                        _InfoRow(label: 'Campus', value: 'Main Campus'),
-                        _InfoRow(label: 'Department', value: 'Information Technology'),
+                        _InfoRow(
+                          label: 'Role',
+                          value: currentUser?.role ?? '',
+                        ),
+                        const _InfoRow(
+                          label: 'Campus',
+                          value: 'Main Campus',
+                        ),
+                        const _InfoRow(
+                          label: 'Department',
+                          value: 'Information Technology',
+                        ),
                       ],
                     ),
 
                     const SizedBox(height: 16),
 
-                    const _InfoCard(
-                      title: 'Registered Vehicle',
+                    _InfoCard(
+                      title: 'Registered Vehicles',
                       children: [
-                        _InfoRow(label: 'Plate', value: 'ABC 123'),
-                        _InfoRow(label: 'State', value: 'NSW'),
-                        _InfoRow(label: 'Vehicle', value: 'Sedan'),
+                        if (isLoadingVehicles)
+                          const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: CircularProgressIndicator(),
+                          ),
+
+                        if (!isLoadingVehicles && vehicles.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Text('No vehicles registered.'),
+                          ),
+
+                        ...vehicles.map(
+                          (vehicle) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _InfoRow(
+                              label: 'Plate',
+                              value: vehicle.licensePlate,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
 
@@ -330,7 +411,8 @@ class _BookingCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(999),

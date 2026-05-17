@@ -1,19 +1,19 @@
 class Vehicle {
-  final int vehicleId;
+  final int? vehicleID;
   final String licensePlate;
-  final int? userId;
+  final int? userID;
 
   const Vehicle({
-    required this.vehicleId,
+    this.vehicleID,
     required this.licensePlate,
-    this.userId,
+    this.userID,
   });
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      vehicleId: json['vehicleID'] as int,
-      licensePlate: json['licensePlate'] as String,
-      userId: json['userID'] as int?,
+      vehicleID: json['vehicleID'] as int?,
+      licensePlate: json['licensePlate'] as String? ?? '',
+      userID: json['userID'] as int?,
     );
   }
 }

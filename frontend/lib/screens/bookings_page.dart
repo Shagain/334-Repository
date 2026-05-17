@@ -3,6 +3,8 @@ import 'dashboard_page.dart';
 import 'payment_methods_page.dart';
 import 'profile_page.dart';
 import 'app_state.dart';
+import '../services/booking_service.dart';
+import '../models/booking.dart';
 
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
@@ -15,6 +17,28 @@ class _BookingsPageState extends State<BookingsPage> {
   String selectedZone = 'Zone A';
   String selectedVehicle = 'ABC 123';
   int selectedHours = 2;
+
+  final BookingService _bookingService = BookingService();
+
+  List<BookingModel> bookings = [];
+  bool isLoadingBookings = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadBookings();
+  }
+
+  Future<void> loadBookings() async {
+    final loadedBookings = await _bookingService.getBookings();
+
+    if (!mounted) return;
+
+    setState(() {
+      bookings = loadedBookings;
+      isLoadingBookings = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +84,18 @@ class _BookingsPageState extends State<BookingsPage> {
                         value: selectedZone,
                         decoration: _inputDecoration(),
                         items: const [
-                          DropdownMenuItem(value: 'Zone A', child: Text('Zone A - Main Campus')),
-                          DropdownMenuItem(value: 'Zone B', child: Text('Zone B - Library')),
-                          DropdownMenuItem(value: 'Zone C', child: Text('Zone C - Sports Centre')),
+                          DropdownMenuItem(
+                            value: 'Zone A',
+                            child: Text('Zone A - Main Campus'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Zone B',
+                            child: Text('Zone B - Library'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Zone C',
+                            child: Text('Zone C - Sports Centre'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() => selectedZone = value!);
@@ -78,8 +111,14 @@ class _BookingsPageState extends State<BookingsPage> {
                         value: selectedVehicle,
                         decoration: _inputDecoration(),
                         items: const [
-                          DropdownMenuItem(value: 'ABC 123', child: Text('ABC 123 - My Car')),
-                          DropdownMenuItem(value: 'XYZ 789', child: Text('XYZ 789 - Family Car')),
+                          DropdownMenuItem(
+                            value: 'ABC 123',
+                            child: Text('ABC 123 - My Car'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'XYZ 789',
+                            child: Text('XYZ 789 - Family Car'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() => selectedVehicle = value!);
@@ -143,7 +182,10 @@ class _BookingsPageState extends State<BookingsPage> {
                         children: [
                           _SummaryRow(label: 'Zone', value: selectedZone),
                           _SummaryRow(label: 'Vehicle', value: selectedVehicle),
-                          _SummaryRow(label: 'Duration', value: '$selectedHours hours'),
+                          _SummaryRow(
+                            label: 'Duration',
+                            value: '$selectedHours hours',
+                          ),
                           const Divider(height: 28),
                           _SummaryRow(
                             label: 'Total',
@@ -194,6 +236,61 @@ class _BookingsPageState extends State<BookingsPage> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 28),
+
+                    const Text(
+                      'Previous Bookings',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w800,
+                        color: primaryBlue,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    if (isLoadingBookings)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      ),
+
+                    if (!isLoadingBookings && bookings.isEmpty)
+                      const _SectionCard(
+                        title: 'No bookings yet',
+                        child: Text(
+                          'Your bookings will appear here once you make one.',
+                        ),
+                      ),
+
+                    if (!isLoadingBookings)
+                      ...bookings.map(
+                        (booking) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _SectionCard(
+                            title: booking.zone,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Vehicle: ${booking.vehicle}'),
+                                const SizedBox(height: 6),
+                                Text('Duration: ${booking.hours} hours'),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Total: \$${booking.total.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: primaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
