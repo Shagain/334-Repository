@@ -12,4 +12,7 @@ public sealed class TokenResponseDto
 
     [JsonPropertyName("tokenType")]
     public string TokenType { get; set; } = "Bearer";
+
+    [JsonPropertyName("refreshToken")]
+    public string? RefreshToken { get; set; }
 }

@@ -8,6 +8,24 @@ const _kVerifierKey = 'ms_pkce_verifier';
 const _kStateKey = 'ms_pkce_state';
 const _kRedirectKey = 'ms_pkce_redirect';
 
+/// Microsoft returns ?code= on the redirect URL. Flutter web may put params in the hash.
+Map<String, String> _oauthQueryParameters(Uri uri) {
+  if (uri.queryParameters.isNotEmpty) return uri.queryParameters;
+
+  final fragment = uri.fragment;
+  if (fragment.isEmpty) return const {};
+
+  final fragmentUri = Uri.parse(fragment.startsWith('/') ? fragment : '/$fragment');
+  if (fragmentUri.queryParameters.isNotEmpty) return fragmentUri.queryParameters;
+
+  final queryPart = fragment.contains('?') ? fragment.split('?').last : fragment;
+  if (queryPart.contains('=')) {
+    return Uri.splitQueryString(queryPart);
+  }
+
+  return const {};
+}
+
 void _clearSessionKeys() {
   html.window.sessionStorage.remove(_kVerifierKey);
   html.window.sessionStorage.remove(_kStateKey);
@@ -28,17 +46,18 @@ Future<bool> tryHandleMicrosoftOAuthReturn({
   if (href.isEmpty) return false;
 
   final uri = Uri.parse(href);
-  final oauthErr = uri.queryParameters['error'];
+  final params = _oauthQueryParameters(uri);
+  final oauthErr = params['error'];
   if (oauthErr != null) {
-    final desc = uri.queryParameters['error_description'];
+    final desc = params['error_description'];
     onError(desc != null ? Uri.decodeFull(desc.replaceAll('+', ' ')) : oauthErr);
     _clearSessionKeys();
     _clearOAuthQueryFromUrl();
     return true;
   }
 
-  final code = uri.queryParameters['code'];
-  final returnedState = uri.queryParameters['state'];
+  final code = params['code'];
+  final returnedState = params['state'];
   if (code == null || returnedState == null) return false;
 
   final storedState = html.window.sessionStorage[_kStateKey];

@@ -36,6 +36,8 @@ class ApiClient {
   final String baseUrl;
 
   static const _tokenKey = 'accessToken';
+  static const _refreshTokenKey = 'refreshToken';
+  static const _tokenExpiresAtKey = 'tokenExpiresAt';
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);
@@ -45,8 +47,29 @@ class ApiClient {
     return _storage.read(key: _tokenKey);
   }
 
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: _refreshTokenKey, value: token);
+  }
+
+  Future<String?> getRefreshToken() {
+    return _storage.read(key: _refreshTokenKey);
+  }
+
+  /// ISO-8601 UTC instant when the access token should be treated as expired.
+  Future<void> saveTokenExpiresAt(DateTime expiresAt) async {
+    await _storage.write(key: _tokenExpiresAtKey, value: expiresAt.toUtc().toIso8601String());
+  }
+
+  Future<DateTime?> getTokenExpiresAt() async {
+    final raw = await _storage.read(key: _tokenExpiresAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toUtc();
+  }
+
   Future<void> clearToken() async {
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(key: _tokenExpiresAtKey);
   }
 
   Future<Map<String, String>> _headers({bool authenticated = true}) async {
@@ -96,11 +119,20 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool authenticated = true,
   }) async {
-    final response = await _httpClient.post(
-      _uri(path),
-      headers: await _headers(authenticated: authenticated),
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    );
+    late final http.Response response;
+    try {
+      response = await _httpClient.post(
+        _uri(path),
+        headers: await _headers(authenticated: authenticated),
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      );
+    } catch (e) {
+      throw ApiException(
+        0,
+        'Cannot reach the API at $baseUrl. Start the backend (docker compose up in backend/) '
+        'and ensure it listens on port 5000.',
+      );
+    }
     return _decode(response);
   }
 

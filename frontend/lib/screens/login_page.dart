@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../app_keys.dart';
 import '../auth/microsoft_oauth.dart';
+import '../auth/microsoft_oauth_config.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import 'vehicle_registration_page.dart';
@@ -25,6 +26,14 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrapOAuthReturn());
+  }
+
+  String _authErrorMessage(ApiException e) {
+    if (e.statusCode == 503) {
+      return '${e.message} Rebuild the API: cd backend && docker compose up --build -d';
+    }
+    if (e.statusCode == 0) return e.message;
+    return e.message;
   }
 
   void _notifyUser(String text, {Duration duration = const Duration(seconds: 8)}) {
@@ -66,13 +75,13 @@ class _LoginPageState extends State<LoginPage> {
             redirectUri: redirectUri,
           );
           if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const VehicleRegistrationPage()),
-          );
+          await _goToHome();
         } on ApiException catch (e) {
           if (!mounted) return;
-          _notifyUser(e.message);
+          _notifyUser(_authErrorMessage(e));
+        } catch (e) {
+          if (!mounted) return;
+          _notifyUser('Sign-in failed: $e');
         } finally {
           if (mounted) setState(() => _loadingProvider = null);
         }
@@ -113,6 +122,13 @@ class _LoginPageState extends State<LoginPage> {
     return origin.endsWith('/') ? origin : '$origin/';
   }
 
+  Future<void> _goToHome() {
+    return Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const VehicleRegistrationPage()),
+    );
+  }
+
   Future<void> _continueWithMicrosoft() async {
     if (!kIsWeb) {
       if (!mounted) return;
@@ -120,9 +136,30 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final tenantId = _microsoftTenantId();
-    final clientId = _microsoftClientId();
-    if (tenantId.isEmpty || clientId.isEmpty) {
+    setState(() => _loadingProvider = 'microsoft');
+    try {
+      if (await _authService.tryRestoreSession()) {
+        if (!mounted) return;
+        await _goToHome();
+        return;
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _notifyUser(_authErrorMessage(e));
+      return;
+    } catch (e) {
+      if (!mounted) return;
+      _notifyUser('Sign-in failed: $e');
+      return;
+    } finally {
+      if (mounted) setState(() => _loadingProvider = null);
+    }
+
+    final msConfig = MicrosoftOAuthConfig.parse(
+      rawTenantId: _microsoftTenantId(),
+      rawClientId: _microsoftClientId(),
+    );
+    if (msConfig == null) {
       if (!mounted) return;
       _notifyUser(
         'Missing MICROSOFT_TENANT_ID or MICROSOFT_CLIENT_ID. '
@@ -133,11 +170,30 @@ class _LoginPageState extends State<LoginPage> {
         builder: (ctx) => AlertDialog(
           title: const Text('Microsoft sign-in not configured'),
           content: const Text(
-            'Add your Azure values to the file frontend/.env next to pubspec.yaml:\n\n'
-            'MICROSOFT_TENANT_ID=your-tenant-guid\n'
-            'MICROSOFT_CLIENT_ID=your-client-guid\n\n'
-            'Then fully restart the app (not only hot reload).',
+            'Add your Azure values to frontend/.env:\n\n'
+            'MICROSOFT_TENANT_ID=<Directory tenant ID GUID>\n'
+            'MICROSOFT_CLIENT_ID=<Application client ID GUID>\n\n'
+            'Azure Portal → Microsoft Entra ID → Overview → Tenant ID\n'
+            'Azure Portal → App registrations → your app → Application (client) ID\n\n'
+            'Then fully restart: flutter run -d edge --web-port=8080',
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final configError = msConfig.validate();
+    if (configError != null) {
+      if (!mounted) return;
+      _notifyUser(configError);
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Invalid Microsoft configuration'),
+          content: Text(configError),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
           ],
@@ -151,8 +207,8 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       try {
         startMicrosoftSignIn(
-          tenantId: tenantId,
-          clientId: clientId,
+          tenantId: msConfig.tenantId,
+          clientId: msConfig.clientId,
           redirectUri: _microsoftRedirectUri(),
         );
       } on UnsupportedError catch (e) {

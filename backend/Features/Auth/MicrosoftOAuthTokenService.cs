@@ -28,13 +28,30 @@ public sealed class MicrosoftOAuthTokenService(HttpClient httpClient, IConfigura
     /// Tenant/client from appsettings (<c>MicrosoftAuth:*</c>), Docker env (<c>MicrosoftAuth__*</c>),
     /// or the same flat names as Flutter (<c>MICROSOFT_TENANT_ID</c> / <c>MICROSOFT_CLIENT_ID</c>).
     /// </summary>
-    private string? TenantId => FirstNonEmpty(
+    private string? TenantId => SanitizeId(FirstNonEmpty(
         _configuration["MicrosoftAuth:TenantId"],
-        _configuration["MICROSOFT_TENANT_ID"]);
+        _configuration["MICROSOFT_TENANT_ID"]));
 
-    private string? ClientId => FirstNonEmpty(
+    private string? ClientId => SanitizeId(FirstNonEmpty(
         _configuration["MicrosoftAuth:ClientId"],
-        _configuration["MICROSOFT_CLIENT_ID"]);
+        _configuration["MICROSOFT_CLIENT_ID"]));
+
+    private static string? SanitizeId(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim().Trim('"', '\'');
+        const string loginHost = "https://login.microsoftonline.com/";
+        if (trimmed.StartsWith(loginHost, StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = trimmed[loginHost.Length..];
+            var slash = rest.IndexOf('/');
+            trimmed = slash < 0 ? rest : rest[..slash];
+        }
+
+        return trimmed.Trim();
+    }
 
     private string? ClientSecret => FirstNonEmpty(_configuration["MicrosoftAuth:ClientSecret"]);
 
@@ -92,6 +109,63 @@ public sealed class MicrosoftOAuthTokenService(HttpClient httpClient, IConfigura
             return (null, msg);
         }
 
+        return ParseTokenResponse(body);
+    }
+
+    public async Task<(TokenResponseDto? Ok, string? Error)> RefreshAccessTokenAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured)
+            return (null, "Microsoft sign-in is not configured on the server (MicrosoftAuth:TenantId / ClientId).");
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return (null, "refreshToken is required.");
+
+        var tenantId = TenantId!.Trim();
+        var clientId = ClientId!.Trim();
+        var clientSecret = ClientSecret;
+        var tokenEndpoint = $"https://login.microsoftonline.com/{tenantId}/oauth2/v2.0/token";
+
+        var form = new Dictionary<string, string>
+        {
+            ["client_id"] = clientId,
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken.Trim(),
+            ["scope"] = "openid profile email offline_access",
+        };
+
+        if (!string.IsNullOrEmpty(clientSecret))
+            form["client_secret"] = clientSecret;
+
+        using var content = new FormUrlEncodedContent(form);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync(tokenEndpoint, content, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Microsoft refresh token HTTP request failed.");
+            return (null, "Could not reach Microsoft to refresh sign-in.");
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = TryReadOAuthError(body) ?? $"Microsoft token endpoint returned {(int)response.StatusCode}.";
+            _logger.LogWarning("Microsoft token refresh failed: {Message}. Body: {Body}", msg, body);
+            return (null, msg);
+        }
+
+        return ParseTokenResponse(body);
+    }
+
+    private static (TokenResponseDto? Ok, string? Error) ParseTokenResponse(string body)
+    {
         using var doc = JsonDocument.Parse(body);
         var root = doc.RootElement;
 
@@ -106,11 +180,14 @@ public sealed class MicrosoftOAuthTokenService(HttpClient httpClient, IConfigura
             ? secs
             : (int?)null;
 
+        var refreshToken = root.TryGetProperty("refresh_token", out var rt) ? rt.GetString() : null;
+
         return (new TokenResponseDto
         {
             AccessToken = chosen,
             ExpiresIn = expiresIn,
             TokenType = "Bearer",
+            RefreshToken = refreshToken,
         }, null);
     }
 

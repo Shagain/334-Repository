@@ -61,8 +61,7 @@ if (app.Environment.IsDevelopment())
     {
         app.Logger.LogWarning(
             "Microsoft OAuth not configured (missing tenant or client id). "
-            "Ensure backend/docker-compose.yml env_file ../frontend/.env exists and contains MICROSOFT_TENANT_ID and MICROSOFT_CLIENT_ID, "
-            "or set MicrosoftAuth in appsettings. Rebuild: docker compose up --build.");
+            + "Ensure frontend/.env has MICROSOFT_TENANT_ID and MICROSOFT_CLIENT_ID, then rebuild the API container.");
     }
     else
     {
