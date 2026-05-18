@@ -3,9 +3,31 @@ import 'bookings_page.dart';
 import 'profile_page.dart';
 import 'payment_methods_page.dart';
 import 'app_state.dart';
+import '../services/auth_service.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  final _authService = AuthService();
+  String? _displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDisplayName();
+  }
+
+  Future<void> _loadDisplayName() async {
+    await _authService.ensureDisplayName();
+    final name = await _authService.getDisplayName();
+    if (!mounted) return;
+    setState(() => _displayName = name);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +49,9 @@ class DashboardPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                        CircleAvatar(
+                        const CircleAvatar(
                           radius: 24,
                           backgroundColor: Color(0xFFE8ECFF),
                           child: Icon(
@@ -38,22 +60,22 @@ class DashboardPage extends StatelessWidget {
                             size: 28,
                           ),
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Good morning',
+                              const Text(
+                                'Hello',
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: mutedText,
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Conle',
-                                style: TextStyle(
+                                _displayName ?? 'there',
+                                style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
                                   color: primaryBlue,
@@ -62,7 +84,7 @@ class DashboardPage extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Icon(
+                        const Icon(
                           Icons.notifications_none,
                           size: 28,
                           color: Colors.black87,

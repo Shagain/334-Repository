@@ -140,6 +140,8 @@ class _LoginPageState extends State<LoginPage> {
     try {
       if (await _authService.tryRestoreSession()) {
         if (!mounted) return;
+        await _authService.ensureDisplayName();
+        if (!mounted) return;
         await _goToHome();
         return;
       }
