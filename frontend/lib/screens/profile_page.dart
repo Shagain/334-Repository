@@ -6,7 +6,9 @@ import 'app_state.dart';
 import '../services/vehicle_service.dart';
 import '../models/vehicle.dart';
 import '../services/user_service.dart';
+import '../services/auth_service.dart';
 import '../models/user.dart';
+import 'login_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,6 +20,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final VehicleService _vehicleService = VehicleService();
   final UserService _userService = UserService();
+  final AuthService _authService = AuthService();
 
   List<Vehicle> vehicles = [];
   User? currentUser;
@@ -217,7 +220,15 @@ class _ProfilePageState extends State<ProfilePage> {
                       width: double.infinity,
                       height: 54,
                       child: OutlinedButton.icon(
-                        onPressed: () {},
+                        onPressed: () async {
+                          await _authService.logout();
+                          if (!context.mounted) return;
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginPage()),
+                            (_) => false,
+                          );
+                        },
                         icon: const Icon(Icons.logout),
                         label: const Text('Log Out'),
                         style: OutlinedButton.styleFrom(
