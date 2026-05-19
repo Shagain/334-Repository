@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'bookings_page.dart';
-import 'profile_page.dart';
-import 'payment_methods_page.dart';
+import 'package:go_router/go_router.dart';
+
+import '../router/app_router.dart';
+import '../widgets/main_bottom_nav.dart';
 import 'app_state.dart';
 import '../services/auth_service.dart';
+import '../services/vehicle_service.dart';
+import '../models/vehicle.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -14,19 +17,25 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final _authService = AuthService();
+  final _vehicleService = VehicleService();
   String? _displayName;
+  List<Vehicle> _vehicles = [];
 
   @override
   void initState() {
     super.initState();
-    _loadDisplayName();
+    _loadDashboardData();
   }
 
-  Future<void> _loadDisplayName() async {
-    await _authService.ensureDisplayName();
+  Future<void> _loadDashboardData() async {
+    await _authService.ensureMicrosoftProfile();
     final name = await _authService.getDisplayName();
+    final vehicles = await _vehicleService.getVehicles();
     if (!mounted) return;
-    setState(() => _displayName = name);
+    setState(() {
+      _displayName = name;
+      _vehicles = vehicles;
+    });
   }
 
   @override
@@ -182,12 +191,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             width: double.infinity,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const BookingsPage()),
-                                );
-                              },
+                              onPressed: () => context.go(AppRoutes.bookings),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
                                 foregroundColor: primaryBlue,
@@ -256,20 +260,22 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     const SizedBox(height: 12),
 
-                    const Row(
+                    Row(
                       children: [
-                        Expanded(
+                        const Expanded(
                           child: _StatCard(
                             title: 'Active Session',
                             value: 'None',
                             icon: Icons.local_parking,
                           ),
                         ),
-                        SizedBox(width: 12),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _StatCard(
                             title: 'Saved Vehicle',
-                            value: '1',
+                            value: _vehicles.isEmpty
+                                ? 'None'
+                                : _vehicles.first.licensePlate,
                             icon: Icons.directions_car,
                           ),
                         ),
@@ -299,7 +305,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-            const _BottomNavBar(currentIndex: 0),
+            const MainBottomNav(),
           ],
         ),
       ),
@@ -484,79 +490,6 @@ class _MapPin extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
-    );
-  }
-}
-
-class _BottomNavBar extends StatelessWidget {
-  final int currentIndex;
-
-  const _BottomNavBar({required this.currentIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    return NavigationBar(
-      selectedIndex: currentIndex,
-      backgroundColor: Colors.white,
-      indicatorColor: const Color(0xFFE8ECFF),
-        onDestinationSelected: (index) {
-          if (index == currentIndex) return;
-
-          if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const BookingsPage()),
-            );
-          }
-
-          if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => PaymentMethodsPage(
-                  booking: Booking(
-                    zone: 'Zone A',
-                    vehicle: 'ABC 123',
-                    hours: 2,
-                    rate: 4.50,
-                    paymentMethod: '',
-                    paidAt: DateTime.now(),
-                  ),
-                ),
-              ),
-            );
-          }
-
-          if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const ProfilePage()),
-            );
-          }
-        },
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.calendar_today_outlined),
-          selectedIcon: Icon(Icons.calendar_today),
-          label: 'Bookings',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.credit_card_outlined),
-          selectedIcon: Icon(Icons.credit_card),
-          label: 'Payments',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-      
     );
   }
 }
