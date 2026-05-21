@@ -1,0 +1,17 @@
+using SmartParking.Domain.Entities;
+
+namespace SmartParking.Domain.Repositories;
+
+public interface IParkingSpotRepository
+{
+    Task<ParkingSpot?> GetByIdAsync(int spotId);
+    Task<IEnumerable<ParkingSpot>> GetAvailableSpotsByZoneAsync(int zoneId);
+    Task<int> CountAvailableSpotsInZoneAsync(int zoneId);
+    Task<IEnumerable<ParkingSpot>> GetByZoneIdAsync(int zoneId);
+}
+
+public interface IZoneRepository
+{
+    Task<Zone?> GetByIdAsync(int zoneId);
+    Task<IEnumerable<Zone>> GetAllAsync();
+}
