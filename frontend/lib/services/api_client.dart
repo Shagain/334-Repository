@@ -1,0 +1,235 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
+
+/// Default API root: local Docker in debug, production URL in release.
+String _defaultApiBaseUrl() {
+  const fromEnv = String.fromEnvironment('API_BASE_URL');
+  if (fromEnv.isNotEmpty) return fromEnv;
+  if (kDebugMode) return 'http://localhost:5000';
+  return 'https://api.campuspark.edu.au/v1';
+}
+
+class ApiException implements Exception {
+  final int statusCode;
+  final String message;
+
+  ApiException(this.statusCode, this.message);
+
+  @override
+  String toString() => 'ApiException($statusCode): $message';
+}
+
+class ApiClient {
+  ApiClient({
+    http.Client? httpClient,
+    FlutterSecureStorage? storage,
+    String? baseUrl,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _storage = storage ?? const FlutterSecureStorage(),
+        baseUrl = baseUrl ?? _defaultApiBaseUrl();
+
+  final http.Client _httpClient;
+  final FlutterSecureStorage _storage;
+  final String baseUrl;
+
+  static const _tokenKey = 'accessToken';
+  static const _refreshTokenKey = 'refreshToken';
+  static const _tokenExpiresAtKey = 'tokenExpiresAt';
+  static const _displayNameKey = 'displayName';
+  static const _fullNameKey = 'fullName';
+  static const _userEmailKey = 'userEmail';
+  static const _idTokenKey = 'idToken';
+
+  Future<void> saveToken(String token) async {
+    await _storage.write(key: _tokenKey, value: token);
+  }
+
+  Future<String?> getToken() {
+    return _storage.read(key: _tokenKey);
+  }
+
+  Future<void> saveRefreshToken(String token) async {
+    await _storage.write(key: _refreshTokenKey, value: token);
+  }
+
+  Future<String?> getRefreshToken() {
+    return _storage.read(key: _refreshTokenKey);
+  }
+
+  /// ISO-8601 UTC instant when the access token should be treated as expired.
+  Future<void> saveTokenExpiresAt(DateTime expiresAt) async {
+    await _storage.write(key: _tokenExpiresAtKey, value: expiresAt.toUtc().toIso8601String());
+  }
+
+  Future<DateTime?> getTokenExpiresAt() async {
+    final raw = await _storage.read(key: _tokenExpiresAtKey);
+    if (raw == null || raw.isEmpty) return null;
+    return DateTime.tryParse(raw)?.toUtc();
+  }
+
+  Future<void> saveDisplayName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    await _storage.write(key: _displayNameKey, value: trimmed);
+  }
+
+  Future<String?> getDisplayName() {
+    return _storage.read(key: _displayNameKey);
+  }
+
+  Future<void> saveFullName(String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return;
+    await _storage.write(key: _fullNameKey, value: trimmed);
+  }
+
+  Future<String?> getFullName() {
+    return _storage.read(key: _fullNameKey);
+  }
+
+  Future<void> saveUserEmail(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return;
+    await _storage.write(key: _userEmailKey, value: trimmed);
+  }
+
+  Future<String?> getUserEmail() {
+    return _storage.read(key: _userEmailKey);
+  }
+
+  Future<void> saveIdToken(String token) async {
+    final trimmed = token.trim();
+    if (trimmed.isEmpty) return;
+    await _storage.write(key: _idTokenKey, value: trimmed);
+  }
+
+  Future<String?> getIdToken() {
+    return _storage.read(key: _idTokenKey);
+  }
+
+  Future<void> clearToken() async {
+    await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(key: _tokenExpiresAtKey);
+    await _storage.delete(key: _displayNameKey);
+    await _storage.delete(key: _fullNameKey);
+    await _storage.delete(key: _userEmailKey);
+    await _storage.delete(key: _idTokenKey);
+  }
+
+  Future<Map<String, String>> _headers({bool authenticated = true}) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (authenticated) {
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        throw ApiException(401, 'No bearer token found. Please log in first.');
+      }
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    return headers;
+  }
+
+  Uri _uri(String path, [Map<String, dynamic>? queryParameters]) {
+    final cleanPath = path.startsWith('/') ? path : '/$path';
+    final uri = Uri.parse('$baseUrl$cleanPath');
+
+    if (queryParameters == null || queryParameters.isEmpty) return uri;
+
+    return uri.replace(
+      queryParameters: queryParameters.map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
+    );
+  }
+
+  Future<dynamic> get(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    bool authenticated = true,
+  }) async {
+    final response = await _httpClient.get(
+      _uri(path, queryParameters),
+      headers: await _headers(authenticated: authenticated),
+    );
+    return _decode(response);
+  }
+
+  Future<dynamic> post(
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    late final http.Response response;
+    try {
+      response = await _httpClient.post(
+        _uri(path),
+        headers: await _headers(authenticated: authenticated),
+        body: jsonEncode(body ?? <String, dynamic>{}),
+      );
+    } catch (e) {
+      throw ApiException(
+        0,
+        'Cannot reach the API at $baseUrl. Start the backend (docker compose up in backend/) '
+        'and ensure it listens on port 5000.',
+      );
+    }
+    return _decode(response);
+  }
+
+  Future<dynamic> patch(
+    String path, {
+    Map<String, dynamic>? body,
+    bool authenticated = true,
+  }) async {
+    final response = await _httpClient.patch(
+      _uri(path),
+      headers: await _headers(authenticated: authenticated),
+      body: jsonEncode(body ?? <String, dynamic>{}),
+    );
+    return _decode(response);
+  }
+
+  Future<void> delete(String path, {bool authenticated = true}) async {
+    final response = await _httpClient.delete(
+      _uri(path),
+      headers: await _headers(authenticated: authenticated),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(response.statusCode, _errorMessage(response));
+    }
+  }
+
+  dynamic _decode(http.Response response) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(response.statusCode, _errorMessage(response));
+    }
+
+    if (response.body.isEmpty) return null;
+    return jsonDecode(response.body);
+  }
+
+  String _errorMessage(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded['message']?.toString() ??
+            decoded['error']?.toString() ??
+            response.reasonPhrase ??
+            'Request failed';
+      }
+    } catch (e) {
+    print('JSON decode error: $e');
+  }
+
+    return response.reasonPhrase ?? 'Request failed';
+  }
+}

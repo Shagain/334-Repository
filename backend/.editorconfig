@@ -1,0 +1,43 @@
+# Top-level EditorConfig file for a Beginner-Friendly project
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+end_of_line = lf
+
+[*.{cs,csx,vb,vbx}]
+# --- Naming Conventions ---
+# Keep them as suggestions so they don't block the build
+dotnet_naming_rule.public_members_must_be_pascal_case.severity = suggestion
+dotnet_naming_rule.private_fields_must_be_underscore_camel_case.severity = suggestion
+
+# --- Code Style Rules ---
+# Allow 'var' (cleaner for beginners)
+csharp_style_var_elsewhere = true:suggestion
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# Allow single-line 'if' statements without braces
+csharp_prefer_braces = false:suggestion
+
+# Make accessibility modifiers optional (suggestions only)
+dotnet_style_require_accessibility_modifiers = always:suggestion
+
+# File-scoped namespaces (good for readability)
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# --- Quality & Analyzers ---
+# Set everything to 'suggestion' or 'none' to stay lax
+dotnet_analyzer_diagnostic.category-Style.severity = suggestion
+dotnet_analyzer_diagnostic.category-Quality.severity = suggestion
+dotnet_analyzer_diagnostic.category-Performance.severity = none
+
+# Disable the noisy "Unable to fix" warnings
+dotnet_diagnostic.CA1866.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.CA2227.severity = none
+dotnet_diagnostic.CA1700.severity = none
+dotnet_diagnostic.SYSLIB1045.severity = none
