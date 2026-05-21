@@ -10,7 +10,7 @@ public record LocationDto(
 );
 
 /// <summary>
-/// Request to start parking navigation
+/// Request to start  parking navigation
 /// </summary>
 public record ParkingNavigationRequestDto(
     int ZoneID,
